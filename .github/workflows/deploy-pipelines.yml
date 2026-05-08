@@ -1,0 +1,75 @@
+name: Deploy Ad Pipelines
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - 'meta-api/**'
+      - 'bing-ads/**'
+      - 'gads_backfill/**'
+
+jobs:
+  deploy-meta:
+    name: Deploy Meta Gallery Pipeline
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'meta-api/')
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Deploy to Cloud Functions
+        uses: google-github-actions/deploy-cloud-functions@v2
+        with:
+          name: meta-creatives-gallery
+          runtime: python311
+          entry_point: run_meta_creatives_gallery_pipeline
+          source_dir: meta-api
+          project_id: looker-studio-pro-msanford
+          region: us-central1
+          https_trigger_security_level: secure_always
+
+  deploy-bing:
+    name: Deploy Bing Gallery Pipeline
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'bing-ads/')
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Deploy to Cloud Functions
+        uses: google-github-actions/deploy-cloud-functions@v2
+        with:
+          name: bing-creatives-gallery
+          runtime: python311
+          entry_point: run_bing_creatives_gallery_pipeline
+          source_dir: bing-ads
+          project_id: looker-studio-pro-msanford
+          region: us-central1
+          https_trigger_security_level: secure_always
+
+  deploy-gads:
+    name: Deploy Google Ads Gallery Pipeline
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'gads_backfill/')
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Deploy to Cloud Functions
+        uses: google-github-actions/deploy-cloud-functions@v2
+        with:
+          name: gads-creatives-gallery
+          runtime: python311
+          entry_point: run_creative_gallery_pipeline
+          source_dir: gads_backfill
+          project_id: looker-studio-pro-msanford
+          region: us-central1
+          https_trigger_security_level: secure_always

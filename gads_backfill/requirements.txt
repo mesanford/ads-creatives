@@ -1,0 +1,7 @@
+google-cloud-secret-manager
+google-cloud-bigquery
+google-ads==30.1.0
+firebase-admin
+requests
+pandas
+pyarrow

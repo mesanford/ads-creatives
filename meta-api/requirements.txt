@@ -1,0 +1,8 @@
+pandas
+facebook-business
+google-cloud-bigquery
+google-cloud-secret-manager
+pyarrow
+db-dtypes
+firebase-admin
+requests

@@ -1,0 +1,7 @@
+google-cloud-secret-manager
+google-cloud-bigquery
+bingads
+pandas
+pyarrow
+requests
+firebase-admin

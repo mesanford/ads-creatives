@@ -1,0 +1,55 @@
+# Node.js
+node_modules/
+.next/
+out/
+build/
+.env*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+# lib/ <-- Removed to avoid Next.js conflicts
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv
+venv
+ENV
+bin/
+
+# Firebase
+.firebase/
+# .firebaserc <-- Do not ignore
+firebase-debug.log*
+firestore-debug.log*
+pubsub-debug.log*
+ui-debug.log*
+# firebase.json <-- Do not ignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (IMPORTANT)
+secrets.json
+credentials.json
+*.pem
+*.key
