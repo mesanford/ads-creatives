@@ -34,6 +34,7 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --memory=512Mi \
+            --timeout=540s \
             --service-account=cloud-run-deployer@looker-studio-pro-msanford.iam.gserviceaccount.com
 
   deploy-bing:
@@ -58,6 +59,7 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --memory=512Mi \
+            --timeout=540s \
             --service-account=cloud-run-deployer@looker-studio-pro-msanford.iam.gserviceaccount.com \
             --set-env-vars=GCP_PROJECT=looker-studio-pro-msanford
 
@@ -83,4 +85,5 @@ jobs:
             --trigger-http \
             --allow-unauthenticated \
             --memory=512Mi \
+            --timeout=540s \
             --service-account=cloud-run-deployer@looker-studio-pro-msanford.iam.gserviceaccount.com
