@@ -32,7 +32,8 @@ jobs:
             --project=looker-studio-pro-msanford \
             --region=us-central1 \
             --trigger-http \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --service-account=cloud-run-deployer@looker-studio-pro-msanford.iam.gserviceaccount.com
 
   deploy-bing:
     name: Deploy Bing Gallery Pipeline
@@ -54,7 +55,9 @@ jobs:
             --project=looker-studio-pro-msanford \
             --region=us-central1 \
             --trigger-http \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --service-account=cloud-run-deployer@looker-studio-pro-msanford.iam.gserviceaccount.com \
+            --set-env-vars=GCP_PROJECT=looker-studio-pro-msanford
 
   deploy-gads:
     name: Deploy Google Ads Gallery Pipeline
@@ -76,4 +79,5 @@ jobs:
             --project=looker-studio-pro-msanford \
             --region=us-central1 \
             --trigger-http \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --service-account=cloud-run-deployer@looker-studio-pro-msanford.iam.gserviceaccount.com
