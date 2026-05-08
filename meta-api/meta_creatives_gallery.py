@@ -173,8 +173,17 @@ def sync_creatives_to_firebase(app_id, app_secret, access_token, ad_account_id):
 # ==========================================
 # 4. Cloud Function Entry Point
 # ==========================================
+_CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+}
+
 def run_meta_creatives_gallery_pipeline(request):
     """HTTP Cloud Function Entry Point."""
+    if request.method == 'OPTIONS':
+        return ('', 204, _CORS_HEADERS)
+
     print("[INFO] --- Starting Meta Ads GALLERY Sync ---")
     try:
         app_id = get_secret("FB_APP_ID")
@@ -183,12 +192,12 @@ def run_meta_creatives_gallery_pipeline(request):
         ad_account_id = get_secret("FB_AD_ACCOUNT_ID")
 
         total = sync_creatives_to_firebase(app_id, app_secret, access_token, ad_account_id)
-        
-        return f"Gallery pipeline executed successfully. Synced {total} creatives.", 200
-        
+
+        return (f"Gallery pipeline executed successfully. Synced {total} creatives.", 200, {'Access-Control-Allow-Origin': '*'})
+
     except Exception as e:
         print(f"[ERROR] Pipeline failed: {e}")
-        return f"Pipeline failed: {e}", 500
+        return (f"Pipeline failed: {e}", 500, {'Access-Control-Allow-Origin': '*'})
 
 if __name__ == "__main__":
     run_meta_creatives_gallery_pipeline(None)

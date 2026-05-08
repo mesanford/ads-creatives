@@ -1,8 +1,11 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+    // Creatives are uploaded by Cloud Functions with make_public(); public read matches that intent.
+    // Writes from the client are blocked — uploads go through the backend pipelines only.
+    match /creatives/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

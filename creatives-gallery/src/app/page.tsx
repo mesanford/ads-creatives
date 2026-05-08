@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, where, limit, QueryConstraint } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CreativeCard from "@/components/CreativeCard";
 import { triggerPipeline } from "@/lib/pipelines";
@@ -32,8 +32,13 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const q = query(collection(db, "ad_creatives"), orderBy("updated_at", "desc"));
-    
+    setLoading(true);
+    const constraints: QueryConstraint[] = [orderBy("updated_at", "desc"), limit(200)];
+    if (filter !== "All") {
+      constraints.unshift(where("platform", "==", filter));
+    }
+    const q = query(collection(db, "ad_creatives"), ...constraints);
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items: Creative[] = [];
       snapshot.forEach((doc) => {
@@ -44,11 +49,7 @@ export default function Home() {
     });
 
     return () => unsubscribe();
-  }, []);
-
-  const filteredCreatives = filter === "All" 
-    ? creatives 
-    : creatives.filter(c => c.platform === filter);
+  }, [filter]);
 
   const platforms = ["All", "Meta", "Google", "Bing"];
 
@@ -94,9 +95,9 @@ export default function Home() {
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
-        ) : filteredCreatives.length > 0 ? (
+        ) : creatives.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {filteredCreatives.map((creative) => (
+            {creatives.map((creative) => (
               <CreativeCard key={`${creative.platform}_${creative.ad_id}`} creative={creative} />
             ))}
           </div>

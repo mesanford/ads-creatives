@@ -204,5 +204,23 @@ def main(event, context):
         print(f"[ERROR] Pipeline failed: {str(e)}")
         raise e 
 
+_CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+}
+
+def run_bing_creatives_gallery_pipeline(request):
+    """HTTP Cloud Function Entry Point."""
+    if request.method == 'OPTIONS':
+        return ('', 204, _CORS_HEADERS)
+
+    try:
+        main(None, None)
+        return ('Bing creatives gallery synced successfully.', 200, {'Access-Control-Allow-Origin': '*'})
+    except Exception as e:
+        print(f"[ERROR] Pipeline failed: {e}")
+        return (f"Pipeline failed: {e}", 500, {'Access-Control-Allow-Origin': '*'})
+
 if __name__ == "__main__":
     main(None, None)

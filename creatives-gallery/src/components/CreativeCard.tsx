@@ -12,23 +12,31 @@ interface Creative {
 }
 
 export default function CreativeCard({ creative }: { creative: Creative }) {
-  const isVideo = creative.firebase_storage_url.endsWith('.mp4') || creative.creative_type === 'YOUTUBE_VIDEO';
+  const isYouTube = creative.firebase_storage_url.startsWith('https://www.youtube.com/embed/');
+  const isVideo = !isYouTube && creative.firebase_storage_url.endsWith('.mp4');
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-300">
       <div className="relative h-48 bg-gray-100 flex items-center justify-center overflow-hidden">
         {creative.firebase_storage_url !== 'N/A' ? (
-          isVideo ? (
-            <video 
-              src={creative.firebase_storage_url} 
+          isYouTube ? (
+            <iframe
+              src={creative.firebase_storage_url}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : isVideo ? (
+            <video
+              src={creative.firebase_storage_url}
               className="w-full h-full object-contain"
               controls
               muted
             />
           ) : (
-            <img 
-              src={creative.firebase_storage_url} 
-              alt={creative.ad_name} 
+            <img
+              src={creative.firebase_storage_url}
+              alt={creative.ad_name}
               className="w-full h-full object-contain"
             />
           )

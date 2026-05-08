@@ -156,8 +156,12 @@ def pull_creatives_to_firebase(ga_client, target_customer_ids):
                                 else:
                                     descriptions = row.asset.text_asset.text
 
-                        # Download and Upload to Firebase Storage
-                        firebase_storage_url = download_and_upload_media(source_asset_url, item_id)
+                        # YouTube videos can't be fetched as raw files; store the embed URL directly
+                        if item_type == 'YOUTUBE_VIDEO':
+                            video_id = row.asset.youtube_video_asset.youtube_video_id
+                            firebase_storage_url = f"https://www.youtube.com/embed/{video_id}" if video_id else 'N/A'
+                        else:
+                            firebase_storage_url = download_and_upload_media(source_asset_url, item_id)
 
                         doc_data = {
                             "ad_id": item_id,
@@ -192,19 +196,28 @@ def pull_creatives_to_firebase(ga_client, target_customer_ids):
 # ==========================================
 # 2. Cloud Function Entry Point
 # ==========================================
+_CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+}
+
 def run_creative_gallery_pipeline(request):
     """HTTP Cloud Function Entry Point."""
+    if request.method == 'OPTIONS':
+        return ('', 204, _CORS_HEADERS)
+
     try:
         credentials_dict = get_secret(GCP_PROJECT_ID, SECRET_ID)
         googleads_client = GoogleAdsClient.load_from_dict(credentials_dict, version="v24")
-        
+
         total_records = pull_creatives_to_firebase(googleads_client, TARGET_CUSTOMER_IDS)
-            
-        return f"Creative gallery pipeline success: Synced {total_records} creatives to Firestore.", 200
-        
+
+        return (f"Creative gallery pipeline success: Synced {total_records} creatives to Firestore.", 200, {'Access-Control-Allow-Origin': '*'})
+
     except Exception as e:
         print(f"Pipeline failed: {e}")
-        return f"Error: {e}", 500
+        return (f"Error: {e}", 500, {'Access-Control-Allow-Origin': '*'})
 
 if __name__ == "__main__":
     run_creative_gallery_pipeline(None)

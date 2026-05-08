@@ -97,7 +97,7 @@ def process_and_upload_report(reporting_service_manager, report_request, bq_clie
     print(f"[INFO] SUCCESS! {job.output_rows} rows appended to {table_id}.")
     os.remove(report_path)
 
-from bing_creatives_gallery import main as run_bing_creatives_gallery_pipeline
+from bing_creatives_gallery import run_bing_creatives_gallery_pipeline
 
 def main(event, context):
     print("[INFO] --- Starting Bing Ads to BigQuery Pipeline ---")
