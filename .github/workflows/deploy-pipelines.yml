@@ -33,6 +33,7 @@ jobs:
             --region=us-central1 \
             --trigger-http \
             --allow-unauthenticated \
+            --memory=512Mi \
             --service-account=cloud-run-deployer@looker-studio-pro-msanford.iam.gserviceaccount.com
 
   deploy-bing:
@@ -56,6 +57,7 @@ jobs:
             --region=us-central1 \
             --trigger-http \
             --allow-unauthenticated \
+            --memory=512Mi \
             --service-account=cloud-run-deployer@looker-studio-pro-msanford.iam.gserviceaccount.com \
             --set-env-vars=GCP_PROJECT=looker-studio-pro-msanford
 
@@ -80,4 +82,5 @@ jobs:
             --region=us-central1 \
             --trigger-http \
             --allow-unauthenticated \
+            --memory=512Mi \
             --service-account=cloud-run-deployer@looker-studio-pro-msanford.iam.gserviceaccount.com
