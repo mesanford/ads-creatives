@@ -18,20 +18,21 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || contains(toJSON(github.event.head_commit.modified), '"meta-api/')
     steps:
       - uses: actions/checkout@v4
-      - id: auth
-        uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
       - name: Deploy to Cloud Functions
-        uses: google-github-actions/deploy-cloud-functions@v2
-        with:
-          name: meta-creatives-gallery
-          runtime: python311
-          entry_point: run_meta_creatives_gallery_pipeline
-          source_dir: meta-api
-          project_id: looker-studio-pro-msanford
-          region: us-central1
-          https_trigger_security_level: secure_always
+        run: |
+          gcloud functions deploy meta-creatives-gallery \
+            --gen2 \
+            --runtime=python311 \
+            --entry-point=run_meta_creatives_gallery_pipeline \
+            --source=meta-api \
+            --project=looker-studio-pro-msanford \
+            --region=us-central1 \
+            --trigger-http \
+            --allow-unauthenticated
 
   deploy-bing:
     name: Deploy Bing Gallery Pipeline
@@ -39,20 +40,21 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || contains(toJSON(github.event.head_commit.modified), '"bing-ads/')
     steps:
       - uses: actions/checkout@v4
-      - id: auth
-        uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
       - name: Deploy to Cloud Functions
-        uses: google-github-actions/deploy-cloud-functions@v2
-        with:
-          name: bing-creatives-gallery
-          runtime: python311
-          entry_point: run_bing_creatives_gallery_pipeline
-          source_dir: bing-ads
-          project_id: looker-studio-pro-msanford
-          region: us-central1
-          https_trigger_security_level: secure_always
+        run: |
+          gcloud functions deploy bing-creatives-gallery \
+            --gen2 \
+            --runtime=python311 \
+            --entry-point=run_bing_creatives_gallery_pipeline \
+            --source=bing-ads \
+            --project=looker-studio-pro-msanford \
+            --region=us-central1 \
+            --trigger-http \
+            --allow-unauthenticated
 
   deploy-gads:
     name: Deploy Google Ads Gallery Pipeline
@@ -60,17 +62,18 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || contains(toJSON(github.event.head_commit.modified), '"gads_backfill/')
     steps:
       - uses: actions/checkout@v4
-      - id: auth
-        uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
       - name: Deploy to Cloud Functions
-        uses: google-github-actions/deploy-cloud-functions@v2
-        with:
-          name: gads-creatives-gallery
-          runtime: python311
-          entry_point: run_creative_gallery_pipeline
-          source_dir: gads_backfill
-          project_id: looker-studio-pro-msanford
-          region: us-central1
-          https_trigger_security_level: secure_always
+        run: |
+          gcloud functions deploy gads-creatives-gallery \
+            --gen2 \
+            --runtime=python311 \
+            --entry-point=run_creative_gallery_pipeline \
+            --source=gads_backfill \
+            --project=looker-studio-pro-msanford \
+            --region=us-central1 \
+            --trigger-http \
+            --allow-unauthenticated
