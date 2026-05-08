@@ -1,6 +1,7 @@
 name: Deploy Ad Pipelines
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
@@ -14,7 +15,7 @@ jobs:
   deploy-meta:
     name: Deploy Meta Gallery Pipeline
     runs-on: ubuntu-latest
-    if: contains(toJSON(github.event.head_commit.modified), '"meta-api/')
+    if: github.event_name == 'workflow_dispatch' || contains(toJSON(github.event.head_commit.modified), '"meta-api/')
     steps:
       - uses: actions/checkout@v4
       - id: auth
@@ -35,7 +36,7 @@ jobs:
   deploy-bing:
     name: Deploy Bing Gallery Pipeline
     runs-on: ubuntu-latest
-    if: contains(toJSON(github.event.head_commit.modified), '"bing-ads/')
+    if: github.event_name == 'workflow_dispatch' || contains(toJSON(github.event.head_commit.modified), '"bing-ads/')
     steps:
       - uses: actions/checkout@v4
       - id: auth
@@ -56,7 +57,7 @@ jobs:
   deploy-gads:
     name: Deploy Google Ads Gallery Pipeline
     runs-on: ubuntu-latest
-    if: contains(toJSON(github.event.head_commit.modified), '"gads_backfill/')
+    if: github.event_name == 'workflow_dispatch' || contains(toJSON(github.event.head_commit.modified), '"gads_backfill/')
     steps:
       - uses: actions/checkout@v4
       - id: auth
