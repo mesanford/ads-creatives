@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import CreativeCard from "@/components/CreativeCard";
+import { triggerPipeline } from "@/lib/pipelines";
 
 interface Creative {
   ad_id: string;
@@ -20,6 +21,15 @@ export default function Home() {
   const [creatives, setCreatives] = useState<Creative[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
+  const [refreshing, setRefreshing] = useState<string | null>(null);
+
+  const handleRefresh = async (platform: string) => {
+    const p = platform.toLowerCase() as 'meta' | 'bing' | 'google';
+    setRefreshing(platform);
+    const result = await triggerPipeline(p);
+    alert(result.message);
+    setRefreshing(null);
+  };
 
   useEffect(() => {
     const q = query(collection(db, "ad_creatives"), orderBy("updated_at", "desc"));
@@ -45,9 +55,23 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Ad Creative Gallery</h1>
-          <p className="text-gray-600">Explore active creatives across all your ad accounts.</p>
+        <header className="mb-10 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Ad Creative Gallery</h1>
+            <p className="text-gray-600">Explore active creatives across all your ad accounts.</p>
+          </div>
+          <div className="flex gap-2">
+            {["Meta", "Google", "Bing"].map((p) => (
+              <button
+                key={`refresh-${p}`}
+                onClick={() => handleRefresh(p)}
+                disabled={refreshing !== null}
+                className="text-xs bg-gray-900 text-white px-3 py-2 rounded shadow-sm hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
+              >
+                {refreshing === p ? "Syncing..." : `Sync ${p}`}
+              </button>
+            ))}
+          </div>
         </header>
 
         <div className="flex flex-wrap gap-2 mb-8">
