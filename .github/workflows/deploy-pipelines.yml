@@ -14,7 +14,7 @@ jobs:
   deploy-meta:
     name: Deploy Meta Gallery Pipeline
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.modified, 'meta-api/')
+    if: contains(toJSON(github.event.head_commit.modified), '"meta-api/')
     steps:
       - uses: actions/checkout@v4
       - id: auth
@@ -35,7 +35,7 @@ jobs:
   deploy-bing:
     name: Deploy Bing Gallery Pipeline
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.modified, 'bing-ads/')
+    if: contains(toJSON(github.event.head_commit.modified), '"bing-ads/')
     steps:
       - uses: actions/checkout@v4
       - id: auth
@@ -56,7 +56,7 @@ jobs:
   deploy-gads:
     name: Deploy Google Ads Gallery Pipeline
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.modified, 'gads_backfill/')
+    if: contains(toJSON(github.event.head_commit.modified), '"gads_backfill/')
     steps:
       - uses: actions/checkout@v4
       - id: auth
