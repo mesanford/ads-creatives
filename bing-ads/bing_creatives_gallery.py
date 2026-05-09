@@ -175,6 +175,13 @@ def main(event, context):
 
         df['source_asset_url'] = df.apply(get_media_url, axis=1)
 
+        def cell(row, col):
+            """Return cell value as string, converting NaN/empty to 'N/A'."""
+            val = row.get(col)
+            if val is None or (isinstance(val, float) and pd.isna(val)) or str(val).strip() in ('', 'nan'):
+                return 'N/A'
+            return str(val).strip()
+
         total = len(df)
         _set_status('running', f'Syncing {total} creatives to Firestore...')
         print(f"[INFO] Syncing {total} Bing Ad Creatives to Firestore...")
@@ -192,14 +199,14 @@ def main(event, context):
             doc_data = {
                 'ad_id': ad_id,
                 'platform': 'Bing',
-                'ad_name': row.get('Name', 'N/A'),
-                'headline': row.get('Title', 'N/A'),
-                'ad_text': row.get('Text', 'N/A'),
+                'ad_name': cell(row, 'Name'),
+                'headline': cell(row, 'Title'),
+                'ad_text': cell(row, 'Text'),
                 'source_asset_url': source_asset_url,
                 'firebase_storage_url': firebase_storage_url,
-                'final_url': row.get('Final Url', 'N/A'),
-                'campaign_name': row.get('Campaign', 'N/A'),
-                'ad_group_name': row.get('Ad Group', 'N/A'),
+                'final_url': cell(row, 'Final Url'),
+                'campaign_name': cell(row, 'Campaign'),
+                'ad_group_name': cell(row, 'Ad Group'),
                 'updated_at': firestore.SERVER_TIMESTAMP
             }
 
