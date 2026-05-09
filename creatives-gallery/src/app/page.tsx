@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { collection, doc, query, onSnapshot, orderBy, where, limit, QueryConstraint } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import CreativeCard from "@/components/CreativeCard";
+import CreativeCard, { ViewMode } from "@/components/CreativeCard";
 import { triggerPipeline } from "@/lib/pipelines";
 
 interface Creative {
@@ -23,10 +23,51 @@ interface SyncStatus {
   synced: number;
 }
 
+function IconGrid() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <rect x="1" y="1" width="6" height="6" rx="1" />
+      <rect x="9" y="1" width="6" height="6" rx="1" />
+      <rect x="1" y="9" width="6" height="6" rx="1" />
+      <rect x="9" y="9" width="6" height="6" rx="1" />
+    </svg>
+  );
+}
+
+function IconList() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <rect x="1" y="2" width="14" height="2" rx="1" />
+      <rect x="1" y="7" width="14" height="2" rx="1" />
+      <rect x="1" y="12" width="14" height="2" rx="1" />
+    </svg>
+  );
+}
+
+function IconExpanded() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+      <rect x="1" y="1" width="5" height="6" rx="1" />
+      <rect x="8" y="2" width="7" height="1.5" rx="0.75" />
+      <rect x="8" y="5" width="5" height="1.5" rx="0.75" />
+      <rect x="1" y="9" width="5" height="6" rx="1" />
+      <rect x="8" y="10" width="7" height="1.5" rx="0.75" />
+      <rect x="8" y="13" width="5" height="1.5" rx="0.75" />
+    </svg>
+  );
+}
+
+const VIEW_OPTIONS: { id: ViewMode; label: string; Icon: () => React.ReactElement }[] = [
+  { id: "card", label: "Card", Icon: IconGrid },
+  { id: "compact", label: "Compact", Icon: IconList },
+  { id: "expanded", label: "Expanded", Icon: IconExpanded },
+];
+
 export default function Home() {
   const [creatives, setCreatives] = useState<Creative[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
+  const [view, setView] = useState<ViewMode>("card");
   const [syncStatuses, setSyncStatuses] = useState<Record<string, SyncStatus>>({});
   const statusUnsubs = useRef<Record<string, () => void>>({});
 
@@ -34,7 +75,6 @@ export default function Home() {
     const p = platform.toLowerCase() as "meta" | "bing" | "google";
     triggerPipeline(p);
 
-    // Unsubscribe any previous listener for this platform
     statusUnsubs.current[p]?.();
 
     const unsubscribe = onSnapshot(doc(db, "pipeline_status", p), (snap) => {
@@ -58,7 +98,6 @@ export default function Home() {
     statusUnsubs.current[p] = unsubscribe;
   };
 
-  // Cleanup status listeners on unmount
   useEffect(() => {
     return () => {
       Object.values(statusUnsubs.current).forEach((u) => u());
@@ -144,20 +183,42 @@ export default function Home() {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 mb-8">
-          {platforms.map((p) => (
-            <button
-              key={p}
-              onClick={() => setFilter(p)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                filter === p
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+        {/* Filter tabs + view toggle */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+          <div className="flex flex-wrap gap-2">
+            {platforms.map((p) => (
+              <button
+                key={p}
+                onClick={() => setFilter(p)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  filter === p
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          {/* View toggle */}
+          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+            {VIEW_OPTIONS.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                onClick={() => setView(id)}
+                title={label}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  view === id
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+              >
+                <Icon />
+                <span className="hidden sm:inline">{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -165,11 +226,19 @@ export default function Home() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
           </div>
         ) : creatives.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {creatives.map((creative) => (
-              <CreativeCard key={`${creative.platform}_${creative.ad_id}`} creative={creative} />
-            ))}
-          </div>
+          view === "card" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {creatives.map((creative) => (
+                <CreativeCard key={`${creative.platform}_${creative.ad_id}`} creative={creative} view="card" />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {creatives.map((creative) => (
+                <CreativeCard key={`${creative.platform}_${creative.ad_id}`} creative={creative} view={view} />
+              ))}
+            </div>
+          )
         ) : (
           <div className="bg-white rounded-lg p-12 text-center border-2 border-dashed border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-1">No creatives found</h3>
