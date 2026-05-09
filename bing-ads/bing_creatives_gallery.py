@@ -74,9 +74,19 @@ def download_and_upload_media(url, ad_id):
     
     return 'N/A'
 
+def _set_status(status, message, synced=0):
+    try:
+        db.collection('pipeline_status').document('bing').set({
+            'status': status, 'message': message, 'synced': synced,
+            'updated_at': firestore.SERVER_TIMESTAMP
+        })
+    except Exception:
+        pass
+
 def main(event, context):
     print("[INFO] --- Starting Bing Ads GALLERY Sync ---")
-    
+    _set_status('running', 'Authenticating with Microsoft Ads...')
+
     try:
         client_id = get_secret("MS_CLIENT_ID")
         dev_token = get_secret("MS_DEV_TOKEN")
@@ -116,13 +126,16 @@ def main(event, context):
             last_sync_time_in_utc=None
         )
 
+        _set_status('running', 'Waiting for Microsoft to package bulk export...')
         print("[INFO] Waiting for Microsoft to package the account blueprint...")
         bulk_file_path = bulk_service_manager.download_file(download_parameters)
-        
+
         if not bulk_file_path:
+            _set_status('error', 'Failed to download bulk file from Microsoft.')
             print("[ERROR] Failed to download Bulk file.")
             return
 
+        _set_status('running', 'Parsing bulk export...')
         print("[INFO] Parsing massive Bulk CSV...")
         df_raw = pd.read_csv(bulk_file_path, encoding='utf-8-sig', dtype=str)
         
@@ -162,18 +175,20 @@ def main(event, context):
 
         df['source_asset_url'] = df.apply(get_media_url, axis=1)
 
-        print(f"[INFO] Syncing {len(df)} Bing Ad Creatives to Firestore...")
-        
+        total = len(df)
+        _set_status('running', f'Syncing {total} creatives to Firestore...')
+        print(f"[INFO] Syncing {total} Bing Ad Creatives to Firestore...")
+
         batch = db.batch()
         count = 0
 
         for _, row in df.iterrows():
             ad_id = str(row['Id'])
             source_asset_url = row['source_asset_url']
-            
+
             # Download and Upload to Firebase Storage
             firebase_storage_url = download_and_upload_media(source_asset_url, ad_id)
-            
+
             doc_data = {
                 'ad_id': ad_id,
                 'platform': 'Bing',
@@ -187,20 +202,24 @@ def main(event, context):
                 'ad_group_name': row.get('Ad Group', 'N/A'),
                 'updated_at': firestore.SERVER_TIMESTAMP
             }
-            
+
             doc_ref = db.collection(FIRESTORE_COLLECTION).document(f"bing_{ad_id}")
             batch.set(doc_ref, doc_data)
             count += 1
-            
+
+            if count % 25 == 0:
+                _set_status('running', f'Syncing creatives...', count)
             if count % 500 == 0:
                 batch.commit()
                 batch = db.batch()
 
         batch.commit()
+        _set_status('complete', f'Done! Synced {count} creatives.', count)
         print(f"[INFO] SUCCESS! {count} Bing Ad Creatives synced to Firestore.")
         os.remove(bulk_file_path)
 
     except Exception as e:
+        _set_status('error', f'Error: {str(e)[:200]}')
         print(f"[ERROR] Pipeline failed: {str(e)}")
         raise e 
 

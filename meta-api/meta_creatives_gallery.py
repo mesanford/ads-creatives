@@ -92,34 +92,46 @@ def make_api_call_with_retries(api_call_func, max_retries=5):
 # ==========================================
 # 3. Extract Creatives from Meta
 # ==========================================
+def _set_status(status, message, synced=0):
+    try:
+        db.collection('pipeline_status').document('meta').set({
+            'status': status, 'message': message, 'synced': synced,
+            'updated_at': firestore.SERVER_TIMESTAMP
+        })
+    except Exception:
+        pass
+
 def sync_creatives_to_firebase(app_id, app_secret, access_token, ad_account_id):
+    _set_status('running', 'Authenticating with Meta API...')
     print("[INFO] Authenticating with Meta API...")
     FacebookAdsApi.init(app_id, app_secret, access_token)
     account = AdAccount(ad_account_id)
 
     # STEP 1: Download the actual Creatives
+    _set_status('running', 'Fetching ad creatives from Meta...')
     print("[INFO] Fetching Ad Creatives from Meta...")
     creative_fields = [
-        'id', 'name', 'title', 'body', 'image_url', 'thumbnail_url', 
+        'id', 'name', 'title', 'body', 'image_url', 'thumbnail_url',
         'object_url', 'object_story_spec'
     ]
-    
+
     creatives_cursor = make_api_call_with_retries(
         lambda: account.get_ad_creatives(fields=creative_fields, params={'limit': 50})
     )
-    
+
     creative_lookup = {}
     for c in creatives_cursor:
         creative_lookup[c.get('id')] = c
 
     # STEP 2: Download the Ads to map the Ad ID to the Creative ID
+    _set_status('running', 'Fetching ads to map creative IDs...')
     print("[INFO] Fetching Ads to map IDs...")
     ad_fields = ['id', 'name', 'creative']
-    
+
     ads_cursor = make_api_call_with_retries(
         lambda: account.get_ads(fields=ad_fields, params={'limit': 50})
     )
-    
+
     batch = db.batch()
     count = 0
 
@@ -127,9 +139,9 @@ def sync_creatives_to_firebase(app_id, app_secret, access_token, ad_account_id):
         ad_id = ad.get('id')
         creative_info = ad.get('creative', {})
         creative_id = creative_info.get('id')
-        
+
         c_details = creative_lookup.get(creative_id, {})
-        
+
         image_url = c_details.get('image_url')
         thumbnail_url = c_details.get('thumbnail_url')
         source_asset_url = image_url if image_url else thumbnail_url
@@ -142,10 +154,10 @@ def sync_creatives_to_firebase(app_id, app_secret, access_token, ad_account_id):
                 final_url = story_spec['link_data'].get('link')
             elif 'video_data' in story_spec:
                 final_url = story_spec['video_data'].get('call_to_action', {}).get('value', {}).get('link')
-        
+
         # Download and Upload to Firebase Storage
         firebase_storage_url = download_and_upload_media(source_asset_url, ad_id)
-        
+
         doc_data = {
             'ad_id': ad_id,
             'platform': 'Meta',
@@ -157,16 +169,19 @@ def sync_creatives_to_firebase(app_id, app_secret, access_token, ad_account_id):
             'final_url': final_url if final_url else 'N/A',
             'updated_at': firestore.SERVER_TIMESTAMP
         }
-        
+
         doc_ref = db.collection(FIRESTORE_COLLECTION).document(f"meta_{ad_id}")
         batch.set(doc_ref, doc_data)
         count += 1
-        
+
+        if count % 10 == 0:
+            _set_status('running', f'Downloading and syncing creatives...', count)
         if count % 500 == 0:
             batch.commit()
             batch = db.batch()
 
     batch.commit()
+    _set_status('complete', f'Done! Synced {count} creatives.', count)
     print(f"[INFO] SUCCESS! {count} Meta Ad Creatives synced to Firestore.")
     return count
 
@@ -184,6 +199,7 @@ def run_meta_creatives_gallery_pipeline(request):
     if request.method == 'OPTIONS':
         return ('', 204, _CORS_HEADERS)
 
+    _set_status('running', 'Starting Meta pipeline...')
     print("[INFO] --- Starting Meta Ads GALLERY Sync ---")
     try:
         app_id = get_secret("FB_APP_ID")
@@ -196,6 +212,7 @@ def run_meta_creatives_gallery_pipeline(request):
         return (f"Gallery pipeline executed successfully. Synced {total} creatives.", 200, {'Access-Control-Allow-Origin': '*'})
 
     except Exception as e:
+        _set_status('error', f'Error: {str(e)[:200]}')
         print(f"[ERROR] Pipeline failed: {e}")
         return (f"Pipeline failed: {e}", 500, {'Access-Control-Allow-Origin': '*'})
 

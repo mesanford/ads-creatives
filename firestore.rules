@@ -7,6 +7,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+    // Written by Cloud Functions; read by the frontend to show sync progress
+    match /pipeline_status/{document} {
+      allow read: if true;
+      allow write: if false;
+    }
     // Frontend writes audit logs when manually triggering a pipeline sync
     match /pipeline_logs/{document} {
       allow create: if true;

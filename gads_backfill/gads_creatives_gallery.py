@@ -61,6 +61,15 @@ def download_and_upload_media(url, ad_id):
     
     return 'N/A'
 
+def _set_status(status, message, synced=0):
+    try:
+        db.collection('pipeline_status').document('google').set({
+            'status': status, 'message': message, 'synced': synced,
+            'updated_at': firestore.SERVER_TIMESTAMP
+        })
+    except Exception:
+        pass
+
 def pull_creatives_to_firebase(ga_client, target_customer_ids):
     """Pulls enabled ads and asset links and syncs to Firestore."""
     ga_service = ga_client.get_service("GoogleAdsService")
@@ -106,6 +115,7 @@ def pull_creatives_to_firebase(ga_client, target_customer_ids):
         """
     }
 
+    _set_status('running', 'Querying Google Ads API...')
     count = 0
     batch = db.batch()
 
@@ -182,7 +192,9 @@ def pull_creatives_to_firebase(ga_client, target_customer_ids):
                         doc_ref = db.collection(FIRESTORE_COLLECTION).document(f"gads_{item_id}")
                         batch.set(doc_ref, doc_data)
                         count += 1
-                        
+
+                        if count % 25 == 0:
+                            _set_status('running', f'Syncing creatives...', count)
                         if count % 500 == 0:
                             batch.commit()
                             batch = db.batch()
@@ -191,6 +203,7 @@ def pull_creatives_to_firebase(ga_client, target_customer_ids):
                 print(f"API Error for account {child_id} ({query_name}): {ex.error.code().name}")
 
     batch.commit()
+    _set_status('complete', f'Done! Synced {count} creatives.', count)
     return count
 
 # ==========================================
@@ -207,6 +220,7 @@ def run_creative_gallery_pipeline(request):
     if request.method == 'OPTIONS':
         return ('', 204, _CORS_HEADERS)
 
+    _set_status('running', 'Starting Google Ads pipeline...')
     try:
         credentials_dict = get_secret(GCP_PROJECT_ID, SECRET_ID)
         googleads_client = GoogleAdsClient.load_from_dict(credentials_dict, version="v24")
@@ -216,6 +230,7 @@ def run_creative_gallery_pipeline(request):
         return (f"Creative gallery pipeline success: Synced {total_records} creatives to Firestore.", 200, {'Access-Control-Allow-Origin': '*'})
 
     except Exception as e:
+        _set_status('error', f'Error: {str(e)[:200]}')
         print(f"Pipeline failed: {e}")
         return (f"Error: {e}", 500, {'Access-Control-Allow-Origin': '*'})
 
