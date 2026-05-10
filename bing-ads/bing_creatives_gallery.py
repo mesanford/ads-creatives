@@ -153,7 +153,15 @@ def main(event, context):
                 media_lookup[media_id] = url
 
         # Filter to Ads and Asset Groups
-        columns_to_keep = ['Type', 'Status', 'Id', 'Parent Id', 'Campaign', 'Ad Group', 'Name', 'Title', 'Text', 'Final Url', 'Images', 'Videos']
+        # Include RSA columns (Title 1-3, Description 1-2) alongside legacy ETA columns (Title, Text)
+        columns_to_keep = [
+            'Type', 'Status', 'Id', 'Parent Id', 'Campaign', 'Ad Group', 'Name',
+            'Title', 'Title Part 2', 'Title Part 3',
+            'Title 1', 'Title 2', 'Title 3',
+            'Text', 'Text Part 2',
+            'Description 1', 'Description 2',
+            'Final Url', 'Images', 'Videos',
+        ]
         available_cols = [col for col in columns_to_keep if col in df_raw.columns]
         df = df_raw[available_cols].copy()
         df = df[df['Type'].str.contains('Ad|Asset Group', na=False, case=False)]
@@ -182,6 +190,13 @@ def main(event, context):
                 return 'N/A'
             return str(val).strip()
 
+        def first_valid(row, *cols):
+            for col in cols:
+                v = cell(row, col)
+                if v != 'N/A':
+                    return v
+            return 'N/A'
+
         total = len(df)
         _set_status('running', f'Syncing {total} creatives to Firestore...')
         print(f"[INFO] Syncing {total} Bing Ad Creatives to Firestore...")
@@ -196,12 +211,16 @@ def main(event, context):
             # Download and Upload to Firebase Storage
             firebase_storage_url = download_and_upload_media(source_asset_url, ad_id)
 
+            headline = first_valid(row, 'Title', 'Title 1', 'Title Part 2', 'Title 2', 'Name')
+            ad_text = first_valid(row, 'Text', 'Description 1', 'Text Part 2', 'Description 2')
+            ad_name = first_valid(row, 'Name', 'Title', 'Title 1')
+
             doc_data = {
                 'ad_id': ad_id,
                 'platform': 'Bing',
-                'ad_name': cell(row, 'Name'),
-                'headline': cell(row, 'Title'),
-                'ad_text': cell(row, 'Text'),
+                'ad_name': ad_name,
+                'headline': headline,
+                'ad_text': ad_text,
                 'source_asset_url': source_asset_url,
                 'firebase_storage_url': firebase_storage_url,
                 'final_url': cell(row, 'Final Url'),
