@@ -166,6 +166,10 @@ def pull_creatives_to_firebase(ga_client, target_customer_ids):
                                 else:
                                     descriptions = row.asset.text_asset.text
 
+                        # Text-only asset group fragments are not standalone creatives
+                        if query_name == "Asset_Group" and item_type == "TEXT":
+                            continue
+
                         # YouTube videos can't be fetched as raw files; store the embed URL directly
                         if item_type == 'YOUTUBE_VIDEO':
                             video_id = row.asset.youtube_video_asset.youtube_video_id
@@ -188,6 +192,12 @@ def pull_creatives_to_firebase(ga_client, target_customer_ids):
                             "firebase_storage_url": firebase_storage_url,
                             "updated_at": firestore.SERVER_TIMESTAMP
                         }
+
+                        if (doc_data["headline"] == 'N/A'
+                                and doc_data["ad_text"] == 'N/A'
+                                and doc_data["firebase_storage_url"] == 'N/A'):
+                            print(f"[SKIP] Google ad {item_id} has no media, headline, or text — skipping.")
+                            continue
 
                         doc_ref = db.collection(FIRESTORE_COLLECTION).document(f"gads_{item_id}")
                         batch.set(doc_ref, doc_data)

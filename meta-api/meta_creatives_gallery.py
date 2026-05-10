@@ -158,12 +158,19 @@ def sync_creatives_to_firebase(app_id, app_secret, access_token, ad_account_id):
         # Download and Upload to Firebase Storage
         firebase_storage_url = download_and_upload_media(source_asset_url, ad_id)
 
+        headline = c_details.get('title', 'N/A') or 'N/A'
+        ad_text = c_details.get('body', 'N/A') or 'N/A'
+
+        if headline == 'N/A' and ad_text == 'N/A' and firebase_storage_url == 'N/A':
+            print(f"[SKIP] Meta ad {ad_id} has no media, headline, or text — skipping.")
+            continue
+
         doc_data = {
             'ad_id': ad_id,
             'platform': 'Meta',
-            'ad_name': ad.get('name'),
-            'headline': c_details.get('title', 'N/A'),
-            'ad_text': c_details.get('body', 'N/A'),
+            'ad_name': ad.get('name') or 'N/A',
+            'headline': headline,
+            'ad_text': ad_text,
             'source_asset_url': source_asset_url if source_asset_url else 'N/A',
             'firebase_storage_url': firebase_storage_url,
             'final_url': final_url if final_url else 'N/A',
