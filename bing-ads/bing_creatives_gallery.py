@@ -215,6 +215,10 @@ def main(event, context):
             ad_text = first_valid(row, 'Text', 'Description 1', 'Text Part 2', 'Description 2')
             ad_name = first_valid(row, 'Name', 'Title', 'Title 1')
 
+            if headline == 'N/A' and ad_text == 'N/A' and firebase_storage_url == 'N/A':
+                print(f"[SKIP] Ad {ad_id} has no media, headline, or text — skipping.")
+                continue
+
             doc_data = {
                 'ad_id': ad_id,
                 'platform': 'Bing',
