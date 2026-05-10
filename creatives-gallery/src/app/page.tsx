@@ -15,6 +15,8 @@ interface Creative {
   firebase_storage_url: string;
   final_url: string;
   updated_at: any;
+  review_status?: "keep" | "remove" | "change";
+  review_comment?: string;
 }
 
 interface SyncStatus {
