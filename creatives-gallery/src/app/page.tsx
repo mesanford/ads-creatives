@@ -69,6 +69,7 @@ export default function Home() {
   const [creatives, setCreatives] = useState<Creative[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
+  const [reviewFilter, setReviewFilter] = useState<"all" | "unreviewed" | "keep" | "remove" | "change">("all");
   const [view, setView] = useState<ViewMode>("card");
   const [syncStatuses, setSyncStatuses] = useState<Record<string, SyncStatus>>({});
   const statusUnsubs = useRef<Record<string, () => void>>({});
@@ -126,6 +127,28 @@ export default function Home() {
 
   const platforms = ["All", "Meta", "Google", "Bing"];
   const activeStatuses = Object.entries(syncStatuses);
+
+  const visibleCreatives = creatives.filter((c) => {
+    if (reviewFilter === "unreviewed") return !c.review_status;
+    if (reviewFilter !== "all") return c.review_status === reviewFilter;
+    return true;
+  });
+
+  const reviewCounts = {
+    all: creatives.length,
+    unreviewed: creatives.filter((c) => !c.review_status).length,
+    keep: creatives.filter((c) => c.review_status === "keep").length,
+    remove: creatives.filter((c) => c.review_status === "remove").length,
+    change: creatives.filter((c) => c.review_status === "change").length,
+  };
+
+  const REVIEW_OPTIONS = [
+    { id: "all",        label: "All",        count: reviewCounts.all,        style: "bg-blue-600 text-white",                              inactiveStyle: "bg-white text-gray-600 border-gray-200 hover:bg-gray-100" },
+    { id: "unreviewed", label: "Unreviewed", count: reviewCounts.unreviewed, style: "bg-gray-700 text-white",                              inactiveStyle: "bg-white text-gray-600 border-gray-200 hover:bg-gray-100" },
+    { id: "keep",       label: "Keep",       count: reviewCounts.keep,       style: "bg-green-500 text-white border-green-500",            inactiveStyle: "bg-white text-green-700 border-green-300 hover:bg-green-50" },
+    { id: "remove",     label: "Remove",     count: reviewCounts.remove,     style: "bg-red-500 text-white border-red-500",                inactiveStyle: "bg-white text-red-700 border-red-300 hover:bg-red-50" },
+    { id: "change",     label: "Change",     count: reviewCounts.change,     style: "bg-yellow-400 text-white border-yellow-400",          inactiveStyle: "bg-white text-yellow-700 border-yellow-300 hover:bg-yellow-50" },
+  ] as const;
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
@@ -185,39 +208,59 @@ export default function Home() {
           </div>
         )}
 
-        {/* Filter tabs + view toggle */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-          <div className="flex flex-wrap gap-2">
-            {platforms.map((p) => (
-              <button
-                key={p}
-                onClick={() => setFilter(p)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  filter === p
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-                }`}
-              >
-                {p}
-              </button>
-            ))}
+        {/* Filter rows */}
+        <div className="flex flex-col gap-3 mb-8">
+          {/* Row 1: Platform + view toggle */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {platforms.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setFilter(p)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    filter === p
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+              {VIEW_OPTIONS.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setView(id)}
+                  title={label}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    view === id
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
+                  <Icon />
+                  <span className="hidden sm:inline">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* View toggle */}
-          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
-            {VIEW_OPTIONS.map(({ id, label, Icon }) => (
+          {/* Row 2: Review status filter */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-400 uppercase font-medium mr-1">Review</span>
+            {REVIEW_OPTIONS.map(({ id, label, count, style, inactiveStyle }) => (
               <button
                 key={id}
-                onClick={() => setView(id)}
-                title={label}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  view === id
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                onClick={() => setReviewFilter(id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors flex items-center gap-1.5 ${
+                  reviewFilter === id ? style : inactiveStyle
                 }`}
               >
-                <Icon />
-                <span className="hidden sm:inline">{label}</span>
+                {label}
+                <span className={`text-[10px] font-bold tabular-nums px-1 py-0.5 rounded-full ${reviewFilter === id ? "bg-white/20" : "bg-gray-100 text-gray-500"}`}>
+                  {count}
+                </span>
               </button>
             ))}
           </div>
@@ -227,16 +270,16 @@ export default function Home() {
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
           </div>
-        ) : creatives.length > 0 ? (
+        ) : visibleCreatives.length > 0 ? (
           view === "card" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {creatives.map((creative) => (
+              {visibleCreatives.map((creative) => (
                 <CreativeCard key={`${creative.platform}_${creative.ad_id}`} creative={creative} view="card" />
               ))}
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {creatives.map((creative) => (
+              {visibleCreatives.map((creative) => (
                 <CreativeCard key={`${creative.platform}_${creative.ad_id}`} creative={creative} view={view} />
               ))}
             </div>
@@ -244,7 +287,11 @@ export default function Home() {
         ) : (
           <div className="bg-white rounded-lg p-12 text-center border-2 border-dashed border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-1">No creatives found</h3>
-            <p className="text-gray-500">Use the Sync buttons above to pull creatives from each platform.</p>
+            <p className="text-gray-500">
+              {reviewFilter !== "all"
+                ? "No creatives match this review status. Try a different filter."
+                : "Use the Sync buttons above to pull creatives from each platform."}
+            </p>
           </div>
         )}
       </div>
