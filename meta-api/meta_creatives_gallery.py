@@ -36,58 +36,89 @@ def get_secret(secret_id, version_id="latest"):
     return response.payload.data.decode("UTF-8").strip()
 
 def download_and_upload_media(url, ad_id):
-    """Downloads media from URL and uploads to Firebase Storage."""
+    """Downloads media from URL and uploads to Firebase Storage, skipping if already uploaded."""
     if not url or url == 'N/A' or not url.startswith('http'):
         return 'N/A'
-    
+
+    # Determine extension from URL before making any network call
+    ext = 'jpg'
+    url_lower = url.lower().split('?')[0]
+    if url_lower.endswith('.mp4'):
+        ext = 'mp4'
+    elif url_lower.endswith('.png'):
+        ext = 'png'
+    elif url_lower.endswith('.gif'):
+        ext = 'gif'
+
+    blob_path = f"creatives/meta/{ad_id}.{ext}"
+    blob = bucket.blob(blob_path)
+
+    if blob.exists():
+        print(f"[SKIP] Media for Ad ID {ad_id} already in Storage.")
+        return blob.public_url
+
     try:
         print(f"[INFO] Downloading media for Ad ID: {ad_id}...")
         response = requests.get(url, timeout=30)
         if response.status_code == 200:
             content_type = response.headers.get('content-type', '')
-            ext = 'jpg'
             if 'video' in content_type:
                 ext = 'mp4'
             elif 'png' in content_type:
                 ext = 'png'
             elif 'gif' in content_type:
                 ext = 'gif'
-            
             blob_path = f"creatives/meta/{ad_id}.{ext}"
             blob = bucket.blob(blob_path)
             blob.upload_from_string(response.content, content_type=content_type)
-            
-            # Make the blob publicly accessible for the web gallery
             blob.make_public()
             return blob.public_url
     except Exception as e:
         print(f"[ERROR] Failed to download/upload media for {ad_id}: {e}")
-    
+
     return 'N/A'
+
+RATE_LIMIT_CODES = {17, 613, 80000, 80003, 80004, 80014}
 
 def make_api_call_with_retries(api_call_func, max_retries=5):
     """Executes a Meta API call with exponential backoff for rate limits."""
     retries = 0
-    backoff_factor = 2  
-    wait_time = 60      
+    wait_time = 60
 
     while retries < max_retries:
         try:
             return api_call_func()
         except FacebookRequestError as e:
-            error_code = e.api_error_code()
-            if error_code in [17, 613, 80000, 80003, 80004, 80014]:
-                print(f"[WARNING] Rate limit hit (Error {error_code}). Waiting {wait_time} seconds before retrying...")
+            if e.api_error_code() in RATE_LIMIT_CODES:
+                print(f"[WARNING] Rate limit hit (Error {e.api_error_code()}). Waiting {wait_time}s before retrying...")
                 time.sleep(wait_time)
                 retries += 1
-                wait_time *= backoff_factor 
+                wait_time *= 2
             else:
                 print(f"[ERROR] Meta API Error: {e.api_error_message()}")
-                raise e
-        except Exception as e:
-            raise e
-            
+                raise
+
     raise Exception(f"API call failed after {max_retries} retries due to rate limits.")
+
+def paginate_with_retries(cursor, max_retries=5):
+    """Iterates a Meta SDK cursor, retrying each page on rate limit errors."""
+    items = []
+    retries = 0
+    wait_time = 60
+
+    while True:
+        try:
+            for item in cursor:
+                items.append(item)
+            return items
+        except FacebookRequestError as e:
+            if e.api_error_code() in RATE_LIMIT_CODES and retries < max_retries:
+                print(f"[WARNING] Rate limit during pagination (Error {e.api_error_code()}). Waiting {wait_time}s...")
+                time.sleep(wait_time)
+                retries += 1
+                wait_time *= 2
+            else:
+                raise
 
 # ==========================================
 # 3. Extract Creatives from Meta
@@ -120,7 +151,7 @@ def sync_creatives_to_firebase(app_id, app_secret, access_token, ad_account_id):
     )
 
     creative_lookup = {}
-    for c in creatives_cursor:
+    for c in paginate_with_retries(creatives_cursor):
         creative_lookup[c.get('id')] = c
 
     # STEP 2: Download the Ads to map the Ad ID to the Creative ID
@@ -135,7 +166,7 @@ def sync_creatives_to_firebase(app_id, app_secret, access_token, ad_account_id):
     batch = db.batch()
     count = 0
 
-    for ad in ads_cursor:
+    for ad in paginate_with_retries(ads_cursor):
         ad_id = ad.get('id')
         creative_info = ad.get('creative', {})
         creative_id = creative_info.get('id')
